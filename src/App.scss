@@ -59,6 +59,13 @@ input {
   border-radius: 2px;
   line-height: 25px;
 }
+.preview-gif-modal {
+  #previewGif {
+    background: rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+    display: block;
+  }
+}
 #main {
   #merge {
     background: rgba(0, 0, 0, 0.1);
@@ -71,6 +78,9 @@ input {
     margin-top: 10px;
     div {
       margin-left: 10px;
+    }
+    .ant-radio-input {
+      min-width: 30px;
     }
   }
   .option {

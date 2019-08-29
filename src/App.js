@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.scss';
-import { Upload, Button, Icon, Radio, Input, message } from 'antd';
+import { fabric } from 'fabric';
+import { Upload, Button, Icon, Radio, Input, message, Modal } from 'antd';
 //import axios from 'axios';
 message.config({
   maxCount: 1
@@ -25,21 +26,26 @@ class App extends React.Component {
     this.addFrames = this.addFrames.bind(this);
     this.reduceFrames = this.reduceFrames.bind(this);
     this.onChange = this.onChange.bind(this);
+    this.previewEffect = this.previewEffect.bind(this);
     this.state = {
       clipPartNum: 3, //gif分的段数 默认3段
-      optionArr: [] //初始化数据,initData
+      optionArr: [], //初始化数据,initData
+      previewGifVisible: false
     };
     this.bgColorArr = ['rgba(0,0,0,0.3)', 'rgb(4, 250, 37, 0.3)', 'rgb(41, 4, 250, .3)', 'rgb(41, 4, 10, .3)'];
     this.canvas_sprite = ''; //渲图片的canvas对象
     this.rects = [];
     this.texts = [];
+    this.imgs = [];
     this.height = 300; //固定死
     this.width = 0; //通过实际宽高比计算出来的
-    this.framesLength = 0
+    this.framesLength = 0;
   }
 
   componentDidMount() {
-    this.canvas_sprite = new window.fabric.Canvas('merge');
+    this.canvas_sprite = new fabric.Canvas('merge');
+
+    //this.setState({ previewGifVisible: false });
     this.initData();
     let that = this;
     this.canvas_sprite.on('object:moving', function(e) {
@@ -91,7 +97,7 @@ class App extends React.Component {
   }
   initData() {
     let { clipPartNum } = this.state;
-    
+
     this.clearCanvas();
     this.rects = new Array(clipPartNum).fill('');
     this.texts = new Array(clipPartNum).fill('');
@@ -175,23 +181,23 @@ class App extends React.Component {
       canvas_frame.width = frame.image.width;
       canvas_frame.height = frame.image.height;
       canvas_frame.getContext('2d').putImageData(frame.image, 0, 0);
-      new window.fabric.Image.fromURL(canvas_frame.toDataURL(), function(img) {
-        let width = img.getWidth() * (300 / img.getHeight());
+      new fabric.Image.fromURL(canvas_frame.toDataURL(), function(img) {
+        let width = img.height * (300 / img.height);
         that.width = width;
         img.set({ selectable: false, fill: '#000000', width: width, height: 300 });
-        img.left = img.getWidth() * i;
-        canvas_sprite.setHeight(img.getHeight());
-        canvas_sprite.setWidth(img.getWidth() * (i + 1)); //画布大小固定成800
+        img.left = img.width * i;
+        canvas_sprite.setHeight(img.height);
+        canvas_sprite.setWidth(img.height * (i + 1)); //画布大小固定成800
         canvas_sprite.add(img);
+        that.imgs.push(img);
         //加线进来
-        let Line = new window.fabric.Line([img.getWidth() * i, 0, img.getWidth() * i, img.getHeight()], {
+        let Line = new fabric.Line([img.height * i, 0, img.height * i, img.height], {
           selectable: false,
           fill: '#000000',
           stroke: 'rgba(0,0,0,0.8)' //笔触颜色
         });
         canvas_sprite.add(Line);
         canvas_sprite.renderAll();
-
         that.framesLength = frames.length; //图片总帧数
         if (i === frames.length - 1) that.handlerClipPartNum(); //加载为异步,必须在图片加载完成
       });
@@ -225,7 +231,6 @@ class App extends React.Component {
     const { optionArr } = this.state;
     let rects = this.rects;
     let texts = this.texts;
-    let fabric = window.fabric;
     let canvas_sprite = this.canvas_sprite;
     let left = 0;
     optionArr.forEach((item, i) => {
@@ -253,12 +258,18 @@ class App extends React.Component {
       left += item.frames * this.width;
     });
   }
-  clearCanvas(){
+  clearCanvas() {
+    let canvas_sprite = this.canvas_sprite;
     this.rects.forEach(function(item, i) {
-      item.remove();
+      console.log('item', item);
+      if (item) {
+        canvas_sprite.remove(item);
+      }
     });
     this.texts.forEach(function(item, i) {
-      item.remove();
+      if (item) {
+        canvas_sprite.remove(item);
+      }
     });
   }
   addFrames(i) {
@@ -311,6 +322,68 @@ class App extends React.Component {
       }
     );
   }
+  previewEffect() {
+    this.setState({ previewGifVisible: true }, () => {
+      clearTimeout(this.t2);
+      this.t2 = setTimeout(() => {
+        this.canvas_previewGif = new fabric.Canvas('previewGif');
+        this.composeGif();
+      }, 10);
+    });
+  }
+  async composeGif() {
+    let canvas = this.canvas_previewGif;
+    let framesLength = this.framesLength;
+    let optionArr = this.state.optionArr;
+    let textIndex = 0;
+    let frames = [];
+    let length = 0;
+    for (let index = 0; index < optionArr.length; index++) {
+      length += optionArr[index].frames;
+      frames.push(length);
+    }
+    console.log('frames', frames);
+    clearTimeout(this.composeGifT);
+    for (let index = 0; index < framesLength; index++) {
+      textIndex = frames.findIndex((item, index2) => {
+        console.log('index', index2);
+        if (index2 === 0) {
+          return index + 1 <= item;
+        } else {
+          return index + 1 <= item && index + 1 > frames[index2 - 1];
+        }
+      });
+      console.log('textIndex', index, textIndex);
+      //console.log('this.imgs[index]', this.imgs[index]);
+      let img = fabric.util.object.clone(this.imgs[index]);
+      let text = fabric.util.object.clone(this.texts[textIndex]);
+      await this.addGifFrame(canvas, img, text, textIndex);
+
+      if (index >= framesLength - 1) {
+        this.composeGifT = setTimeout(() => {
+          this.composeGif();
+        }, 10);
+      }
+    }
+  }
+  addGifFrame(canvas, img, text, textIndex) {
+    img.left = 0;
+    img.top = 0;
+    let optionArr = this.state.optionArr;
+    
+    text.left = optionArr[textIndex].left;
+    text.top = optionArr[textIndex].top;
+    clearTimeout(this.t);
+    return new Promise(res => {
+      this.t = setTimeout(() => {
+        canvas.clear();
+        canvas.add(img /* this.imgs[0] */);
+        canvas.add(text /* this.texts[0] */);
+        canvas.renderAll();
+        res();
+      }, 200);
+    });
+  }
   render() {
     let that = this;
     const props = {
@@ -318,7 +391,7 @@ class App extends React.Component {
         that.handlerInputChange(file);
       }
     };
-    const { optionArr } = this.state;
+    const { optionArr, previewGifVisible } = this.state;
     return (
       <div id='main'>
         <canvas id='merge' width='2000' height='300' />
@@ -336,6 +409,11 @@ class App extends React.Component {
               <Radio value={3}>三段</Radio>
               <Radio value={4}>四段</Radio>
             </Radio.Group>
+          </div>
+          <div className='btn'>
+            <Button type='primary' onClick={this.previewEffect}>
+              预览效果
+            </Button>
           </div>
         </div>
         <div className='option'>
@@ -395,6 +473,17 @@ class App extends React.Component {
             );
           })}
         </div>
+        <Modal
+          title='效果'
+          visible={previewGifVisible}
+          footer={null}
+          onCancel={() => {
+            this.setState({ previewGifVisible: false });
+          }}
+          wrapClassName='preview-gif-modal'
+        >
+          <canvas id='previewGif' width='300' height='300' />
+        </Modal>
       </div>
     );
   }
