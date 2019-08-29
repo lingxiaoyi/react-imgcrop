@@ -169,6 +169,7 @@ class App extends React.Component {
     let frames = '';
     let canvas_sprite = this.canvas_sprite;
     let that = this;
+    that.imgs = [];
     canvas_frame = document.createElement('canvas');
     canvas_frame.width = gif.header.width;
     canvas_frame.height = gif.header.height;
@@ -187,7 +188,7 @@ class App extends React.Component {
         img.set({ selectable: false, fill: '#000000', width: width, height: 300 });
         img.left = img.width * i;
         canvas_sprite.setHeight(img.height);
-        canvas_sprite.setWidth(img.height * (i + 1)); //画布大小固定成800
+        canvas_sprite.setWidth(img.height * (i + 1));
         canvas_sprite.add(img);
         that.imgs.push(img);
         //加线进来
@@ -338,22 +339,20 @@ class App extends React.Component {
     let textIndex = 0;
     let frames = [];
     let length = 0;
+    console.log('framesLength', framesLength);
     for (let index = 0; index < optionArr.length; index++) {
       length += optionArr[index].frames;
       frames.push(length);
     }
-    console.log('frames', frames);
     clearTimeout(this.composeGifT);
     for (let index = 0; index < framesLength; index++) {
       textIndex = frames.findIndex((item, index2) => {
-        console.log('index', index2);
         if (index2 === 0) {
           return index + 1 <= item;
         } else {
           return index + 1 <= item && index + 1 > frames[index2 - 1];
         }
       });
-      console.log('textIndex', index, textIndex);
       //console.log('this.imgs[index]', this.imgs[index]);
       let img = fabric.util.object.clone(this.imgs[index]);
       let text = fabric.util.object.clone(this.texts[textIndex]);
@@ -370,7 +369,7 @@ class App extends React.Component {
     img.left = 0;
     img.top = 0;
     let optionArr = this.state.optionArr;
-    
+
     text.left = optionArr[textIndex].left;
     text.top = optionArr[textIndex].top;
     clearTimeout(this.t);

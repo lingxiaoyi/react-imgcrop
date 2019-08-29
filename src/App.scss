@@ -61,9 +61,13 @@ input {
 }
 .preview-gif-modal {
   #previewGif {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
     margin: 0 auto;
     display: block;
+  }
+  .ant-modal-body {
+    display: flex;
+    justify-content: center;
   }
 }
 #main {
