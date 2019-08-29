@@ -339,7 +339,6 @@ class App extends React.Component {
     let textIndex = 0;
     let frames = [];
     let length = 0;
-    console.log('framesLength', framesLength);
     for (let index = 0; index < optionArr.length; index++) {
       length += optionArr[index].frames;
       frames.push(length);
